@@ -1,0 +1,296 @@
+#!/bin/bash
+#
+################################################################################
+#
+# SCRIPT    ison
+# AUTOR     pedro fernandes
+# E-MAIL    pedrobfernandes37@gmail.com
+# DATA      30-04-2021
+#
+################################################################################
+#
+# DESCRIÇÃO:
+#
+# Testa conectividade da máquina usando o ping nos vários pontos da rede,
+# apontando se for o caso em que ponto da rede está o possível problema
+# na conexão.
+#
+# PROCEDIMENTO:
+#
+# 1. ping loopback
+# 2. ping gateway
+# 3. ping ip na internet
+# 4. ping nome de domínio na internet
+#
+################################################################################
+#
+# NOTAS:
+#
+# Variáveis DnsAddr e DomainTest, estão configuradas para dns e dominio google
+# Para usar outros valores basta definir-los na linha de comando na chamada do
+# script (ver abaixo).
+# Da mesma forma, variável TimeOut refere-se ao parâmetro -w (deadline) do
+# ping e está configurada por padrão para 5 segundos.
+# Para mudar, novamente ver abaixo nos exemplos de uso.
+#
+################################################################################
+#
+# EXEMPLOS DE USO:
+#
+# 1. Usa valores padrão
+#
+#  $ ./ison
+#
+# 2. Muda os valores do dns e do dominio
+#
+#  $ DnsAddr=x.x.x.x DomainTest=www.xxxx.xxx.com ./ison
+#
+# 3. Muda valor apenas do dns
+#
+#  $ DnsAddr=x.x.x.x ./ison
+#
+# 4. Muda apenas o dominio
+#
+#  $ DomainTest=www.xxx.xxx.com ./ison
+#
+# 5. Especificar um deadline diferente
+#
+#  $ TimeOut=x ./ison
+#
+# 6.Pode mudar todos os parâmetros:
+#
+#  $ DnsAddr=x.x.x.x DomainTest=www.xxxxx.xxx.com TImeOut=x ./ison
+#
+################################################################################
+#
+##### PARÂMETROS #####
+#
+Ping=$(type -p ping)
+TimeOut=${TimeOut:- 5}
+Ip=$(type -p ip)
+Route=$(type -p route)
+LoopBack=127.0.0.1
+DnsAddr=${DnsAddr:-8.8.8.8}
+DomainTest=${DomainTest:-'www.google.com'}
+#
+############################################################
+#
+##### FUNÇÕES #####
+#
+function MissingMsg {
+
+if [ $# -eq 1 ]
+then
+    echo Você não tem utilitário $1 instalado >&2
+    echo Nesse caso não podemos prosseguir. >&2
+    echo Terminando script... >&2
+    exit 1
+#
+elif [ $# -eq 2 ]
+then
+    echo Você não tem utilitário $1 'e|ou' $2 instalado >&2
+    echo Nesse caso não podemos prosseguir. >&2
+    echo Terminando script.... >&2
+    exit 1
+fi
+
+}
+#
+function UserIntro {
+
+echo '
+*************************************************
+
+O script ison, testa a conectividade da máquina,
+usando a ferramenta ping para enviar pacotes de
+requisição de echo para vários pontos da rede em
+ordem.
+
+O procedimento usado pelo script é:
+
+1. Testa a interface de loopback. Se der certo
+   TCP/IP da máquina está funcionando.
+
+2. Testa a conexão da máquina com o gateway.
+   Se der certo, tem comunicação com gateway.
+
+3. Testa a conectividade com 1 host na internet
+   usando o endereço ip. Se der certo, consegue
+   alcançar internet.
+
+4. Testa a conectividade com 1 host na internet
+   usando o nome de dominio. Se der certo resolução
+   de nomes está funcionando.
+
+NOTA: Script NÃO testa problemas de largura de banda
+      nem problemas de rotas ou perdas de pacotes.
+      Testa apenas se tem conexão e caso não tenha
+      em que ponto da rede não tem a conexão.
+
+*************************************************'
+#
+echo -e "Continuar para o script [S/n] ? \c"
+read -n 1 answer
+
+case $answer in
+S | s)
+    echo -e "\nProsseguindo...."
+    return
+    ;;
+N | n)
+    echo -e "\nTerminando..."
+    exit 0
+    ;;
+*)
+    echo -e "\nInválido. Terminando..." >&2
+    exit 1
+    ;;
+esac
+
+}
+#
+function IsUp {
+
+$Ping -q -w $TimeOut $1
+
+case $? in
+ 0)
+    if [ -n "$line2" ]
+    then
+        echo
+        echo '#####################################'
+        echo -e "\n$line1"
+        echo -e "$line2\n"
+        echo '#####################################'
+        echo
+        sleep 2
+    else
+        echo
+        echo '#####################################'
+        echo -e "\n$line1\n"
+        echo '#####################################'
+        echo
+        sleep 2
+    fi
+    ;;
+*)
+    if [ -n "$error2" ]
+    then
+        echo
+        echo '#####################################'
+        echo -e "\n$error1" >&2
+        echo -e "$error2\n" >&2
+        echo '#####################################'
+        echo
+        exit 1
+    else
+        echo
+        echo '#####################################'
+        echo -e "\n$error1\n" >&2
+        echo '#####################################'
+        echo
+        exit 1
+    fi
+    ;;
+esac
+
+unset line1
+unset line2
+unset error1
+unset error2
+return
+
+}
+#
+################################################################################
+#
+###### VERFICAÇÕES #####
+#
+if [ -z "$Ping" ]
+then
+    MissingMsg ping
+fi
+#
+if [ -n "$Ip" ]
+then
+    Gateway=$($Ip route | head -1 | cut -d ' ' -f 3)
+#
+elif [ -n "$Route" ]
+then
+    Gateway=$($Route -n | head -3 | tail -1 | \
+    gawk '{print $2}')
+else
+    MissingMsg ip route
+fi
+#
+################################################################################
+#
+##### INTRO OU NÃO? #####
+#
+echo -e "Ver introdução ao script [S/n] ? \c"
+read -n 1 answer
+#
+case $answer in
+S |s)
+    clear
+    UserIntro
+    ;;
+N |n)
+    clear
+    :
+    ;;
+*)
+    echo -e "\nInválido. Terminando...." >&2
+    exit 1
+    ;;
+ esac
+#
+################################################################################
+#
+##### LOOPBACK #####
+#
+line1='Tem conectividade com loopback'
+error1='Não conseguimos alcançar loopback'
+
+clear
+echo -e 'Testando sua interface de loopback\n'
+IsUp "$LoopBack"
+#
+################################################################################
+#
+##### GATEWAY #####
+#
+echo -e 'Testando conexão com o gateway....\n'
+line1='Tem conexão com o gateway'
+error1='Não conseguimos alcançar o gateway'
+IsUp "$Gateway"
+#
+################################################################################
+#
+##### CONEXÃO INTERNET (IP) #####
+#
+clear
+echo -e 'Testando conectividade para a internet....\n'
+echo Primeiro testando por número ip....
+#
+line1='Estamos conseguindo alcançar a internet'
+line2='através do endereço ip.'
+error1='Erro ao tentar conectar na internet'
+error2='através do endereço ip.'
+IsUp "$DnsAddr"
+#
+################################################################################
+#
+##### CONEXÃO INTERNET (DOMÍNIO) #####
+#
+echo Tentando agora alcançar através de
+echo -e 'nome de dominio.....\n'
+
+line1='Consegimos alcançar dominio na internet.'
+error1='Não conseguimos alcançar dominio na internet.'
+IsUp "$DomainTest"
+
+echo Todos os teste foram concluídos
+exit 0
+#
+################################################################################

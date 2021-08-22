@@ -1,0 +1,473 @@
+#!/bin/bash
+#
+################################################################################
+#
+# SCRIPT    helpdesk
+# AUTOR     Pedro Fernandes
+# E-MAIL    pedrobfernandes37@gmail.com
+# DATA      20-07-2021 <Inicio>
+#
+################################################################################
+#
+# DESCRIÇÃO:
+#
+# Script que usa o programa sqlite3, para criar e popular uma base de dados
+# de problemas e resolução de problemas em computadores.
+# A base de dados será populada á medida que problemas vão aparecendo, com
+# a descrição do problema e a solução que resolveu esse problema.
+# Posteriormente, usuário poderá consultar essa base de dados, por possiveis
+# problemas que tenham acontecido antes, e possiveis soluções.
+#
+################################################################################
+#
+# DEPENDÊNCIAS:
+#
+# * sqlite3
+#
+################################################################################
+#
+# CONFIGURAÇÃO DE USRÁRIO:
+#
+# 1. O script cria um dirétório, onde armazena a base de dados.
+#    Para isso você, usuário(a), tem que especificar qual diretório
+#    você quer usar, na variável 'DbHome', no inicio do script.
+#    Por favor colocar caminho completo:
+#
+#    DbHome=/home/usuario/diretório
+#    ou
+#    DbHome=$HOME/diretório
+#
+# 2. O script cria a base de dados, com o tipo de dados 'varchar', onde o
+#    máximo de caracteres para cada coluna é especificado nas variáveis no
+#    inicio do script. Elas são:
+#
+#    SoftLenght --> Tem o máximo de caracteres para a coluna software
+#    HardLenght --> O maximo de caracteres para a coluna hardware
+#    DescLenght --> O máximo de caracteres para a coluna description
+#    SolLenght  --> O máximo de caracteres para a coluna Solution
+#
+#    Por padrão os valores são 30, 30, 150, 150, respectivamente.
+#    Mude para o que preferir, dentro do script ou na chamada:
+#    EX: SoftLenght 25 ./helpdesk
+#
+################################################################################
+#
+# LIMITAÇÕES DO SCRIPT:
+#
+# Pelo que li na documentação do sqlite3, o valor para o 'AUTOINCREMENT', que é
+# usado na coluna id da base de dados do script, é limitado. Limitado por um
+# número como '9,223,372,036,854,775,807', se não estou em erro, mas mesmo assim
+# não é infinito.
+#
+################################################################################
+#
+# VERSÃO/CHANGELOG:
+#
+### 1.0       Inicio de Script
+#
+################################################################################
+#
+##### PARÂMETROS #####
+#
+### Você especifica aqui o diretório para
+### armazenar a base de dados e o máximo
+### de caracteres para cada coluna.
+#
+DbHome=
+SoftLenght=${SoftLenght:- 30}
+HardLenght=${HardLenght:- 30}
+DescLenght=${DescLenght:- 150}
+SolLenght=${SolLenght:- 150}
+#
+### A partir daqui não mexer mais.
+#
+BackEnd=$(type -p sqlite3)
+DbName=TroubleShooter.db
+Table=ProbReport
+#
+################################################################################
+#
+##### FUNÇÕES #####
+#
+function ExitMaxTries {
+
+echo
+echo $Error1 >&2
+echo $Error2 >&2
+exit 1
+
+#unset Error1
+#unset Error2
+
+}
+#
+function ErrorExit {
+
+echo $@ >&2
+exit 1
+
+}
+#
+function ExitSigInt {
+
+clear
+echo Script interrompido por usuário.
+echo Terminando...
+exit 0
+
+}
+#
+function Proceed {
+
+echo -en "\nPressione <ENTER> para retornar ao menu de início: "
+read Dummy
+
+return
+
+}
+#
+function Banner {
+
+clear
+echo -e "\t\t\t\t\t\t*********************************************"
+echo -e "\t\t\t\t\t\t*                                           *"
+echo -e "\t\t\t\t\t\t*                                           *"
+echo -e "\t\t\t\t\t\t*                 HELPDESK                  *"
+echo -e "\t\t\t\t\t\t*                                           *"
+echo -e "\t\t\t\t\t\t*                                           *"
+echo -e "\t\t\t\t\t\t*********************************************"
+
+return
+
+}
+
+#
+function CreateTable {
+
+> $DbName || {
+
+ErrorExit Erro ao criar base de dados.
+
+}
+
+$BackEnd $DbName <<EOF
+
+create table $Table (
+id integer primary key,
+hardware varchar($HardLenght) not null,
+software varchar($SoftLenght) not null,
+description varchar($DescLenght) not null,
+solution varchar($SolLenght)
+);
+
+EOF
+
+if [ $? -ne 0 ]
+then
+    ErrorExit Erro inesperado na criação de $Table
+fi
+
+return
+
+}
+#
+function InsertData {
+
+$BackEnd $DbName <<EOF
+insert into $Table values (NULL, '$Device', '$Os', '$Description', '$Solution');
+EOF
+
+if [ $? -eq 0 ]
+then
+    echo Dados inseridos com sucesso.
+    Proceed
+else
+    ErrorExit Problema ao adicionar dados.
+fi
+
+return
+
+}
+#
+function InsertSolution {
+
+clear
+echo -e "Procurando por itens sem solução registrada...\n\n"
+
+ShowItem=$($BackEnd $DbName <<EOF
+.mode line
+select * from $Table where solution like 'NULL';
+EOF
+)
+
+if [ -z "$ShowItem" ]
+then
+    echo Não existe nenhum item atualmente na base de dados
+    echo sem uma solução registrada.
+    Proceed
+    return
+fi
+
+echo -e "Os seguintes itens não têm uma solução registrada na base de dados:\n\n"
+echo "$ShowItem"
+
+echo -en "\n\nSelecione o id do registro para editar: "
+read Id
+
+case  $Id in
+
+*[!0-9]*)
+    ErrorExit Input invalido. Terminando...
+    ;;
+esac
+
+echo -e "\n\nDigite a solução encontrada para o problema."
+echo -e "Máximo de $SolLenght caracteres:"
+read Solution
+
+echo -e "Inserindo solução...\n"
+
+$BackEnd $DbName <<EOF
+update $Table set solution = '$Solution' where id = $Id;
+EOF
+
+if [ $? -eq 0 ]
+then
+    echo Solução para o problema adicionada com sucesso.
+    Proceed
+else
+    ErrorExit Erro ao tentar adicionar solução para o problema.
+fi
+
+return
+
+}
+#
+function AskData {
+
+Error1="Como se recusa a responder,"
+Error2="iremos terminar o script.."
+
+clear
+
+for Try in {1..3}
+do
+
+    echo "Insira o tipo de hardware. (Ex: desktop, notebook, celular, roteador....)"
+    echo -n "Máximo de $HardLenght caracteres: "
+    read Device
+
+    if [ "$Device" = '' ]
+    then
+        if [ $Try -eq 3 ]
+        then
+            ExitMaxTries $Error1 $Error2
+        fi
+
+        echo Não especificou o hardware.
+    else
+        break
+    fi
+
+done
+
+for Try in {1..3}
+do
+
+    echo -e "\nInsira sistema operacional usado. (EX: Linux, Windows, Android)."
+    echo -n "Máximo de $SoftLenght caracteres: "
+    read Os
+
+    if [ "$Os" = '' ]
+    then
+        if [ $Try -eq 3 ]
+        then
+            ExitMaxTries $Error1 $Error2
+        fi
+
+        echo Não especificou o Sistema Operacional.
+    else
+        break
+    fi
+
+done
+
+for Try in {1..3}
+do
+
+    echo -e "\nDigite uma breve descrição do problema (Ex: pc pegou fogo!!)"
+    echo Máximo de $DescLenght caracteres:
+    read Description
+
+    if [ "$Description" = '' ]
+    then
+        if [ $Try -eq 3 ]
+        then
+            ExitMaxTries $Error1 $Error2
+        fi
+
+        echo
+        echo Não deu a descrição do problema.
+    else
+        break
+    fi
+
+done
+
+echo -en "\nDigite [1] para inserir solução [2] para deixar em branco: "
+read -n 1 Choice
+
+case $Choice in
+
+1)
+    echo -e "\nDigite a solução encontrada"
+    echo Máximo de $SolLenght caracteres:
+    read Solution
+
+    if [ "$Solution" = '' ]
+    then
+        echo Como não digitou nada, iremos deixar em branco.
+        echo Rode mais tarde o script e escolha a opção 3
+        echo para atualizar os dados com a solução encontrada.
+        Solution='NULL'
+    fi
+    ;;
+2)
+    echo
+    Solution='NULL'
+    ;;
+*)
+    echo
+    Solution='NULL'
+    ;;
+
+esac
+
+InsertData "$Device" "$Os" "$Description" "$Solution"
+
+return
+
+}
+#
+function QueryData {
+
+clear
+echo As colunas disponiveis são:
+echo id, hardware, software, description e solution.
+
+echo
+echo -n "Digite a coluna que contém o termo de pesquisa: "
+read Column
+
+echo -en "\nDigite o termo de pesquisa: "
+read Search
+
+echo -e "\n\nProcurando por items correspondentes ao seu termo de pesquisa."
+echo -e "Aguarde por favor...\n"
+
+sleep 2
+clear
+
+$BackEnd $DbName <<EOF
+.mode line
+select * from $Table
+where $Column like '%${Search}%';
+EOF
+
+if [ $? -ne 0 ]
+then
+    ErrorExit Erro ao procurar informação na base de dados..
+fi
+
+Proceed
+
+return
+
+}
+#
+function Menu {
+
+while [ 1 ]
+do
+
+    clear
+    Banner
+    echo -e "\n\t\t\t\t\t\t\tPor favor escolha:\n\n"
+    echo -e "\t\t\t\t\t\t\t1. Inserir dados"
+    echo -e "\t\t\t\t\t\t\t2. Fazer consulta"
+    echo -e "\t\t\t\t\t\t\t3. Inserir solução"
+    echo -e "\t\t\t\t\t\t\t0. Sair do script"
+
+    echo -en "\n\n\t\t\t\t\t\tDigite sua opção: "
+    read -n 1 Choice
+
+    case $Choice in
+
+    1)
+        AskData
+        ;;
+    2)
+        QueryData
+        ;;
+    3)
+        InsertSolution
+        ;;
+    0)
+        echo -e "\nTerminando script..."
+        break
+        ;;
+    *)
+        echo
+        ErrorExit Input inválido. Terminando...
+        break
+        ;;
+
+    esac
+
+done
+
+}
+#
+################################################################################
+#
+##### VERIFICAÇÕES #####
+#
+if [ -z "$BackEnd" ]
+then
+    ErrorExit Por favor instale o programa sqlite3.
+fi
+
+if [ -z "$DbHome" ]
+then
+    ErrorExit Não declarou o diretório para a base de dados.
+else
+    if [ ! -d $DbHome ]
+    then
+        mkdir $DbHome || {
+
+        ErrorExit Erro ao criar diretório $DbHome
+
+        }
+    fi
+fi
+
+cd $DbHome || {
+
+ErrorExit Não conseguimos entrar em diretório $DbHome
+
+}
+
+if [ ! -f $DbHome/$DbName ]
+then
+    CreateTable
+fi
+#
+################################################################################
+#
+##### INICIO #####
+#
+trap ExitSigInt SIGINT
+Menu
+exit 0
+#
+################################################################################

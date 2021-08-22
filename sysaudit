@@ -1,0 +1,282 @@
+#!/bin/bash
+
+# -------------------------------------------------------- #
+
+# SCRIPT    sysaudit
+# AUTOR     Pedro Fernandes
+# E-MAIL    pedrobfernandes37@gmail.com
+# DATA      25-05-2021
+
+# -------------------------------------------------------- #
+
+# DESCRIÇÃO:
+
+# Script que audita 2 itens no sistema:
+
+# 1. Itens com bit SUID/SGID
+# 2. Contas de sistema (com shell false/nologin)
+
+# -------------------------------------------------------- #
+
+# FUNCIONAMENTO:
+
+# O script cria um diretório base, e dois subdiretórios
+# que usa para armazenar os arquivos de relatório cada
+# um em seu subdiretório.
+# O script nomeia cada arquivo com a data do dia, e
+# produz uma diferença breve entre o relatório atual
+# e o anterior na tela. O output mostrado pelo script
+# é como este:
+
+#  'Número de contas no relatório anterior:'
+#  '50'
+#  'Número de contas no relatório atual:'
+#  '1500'
+
+# O scrpit produz relatórios detalhados, então, você
+# pode olhar detalhadamente as diferenças nos arquivos
+# dentro dos diretórios.
+
+# Adicionalmente, o script, se for rodado como root
+# configura os arquivos com o atributo imutável,
+# usando o comando chattr.
+
+# -------------------------------------------------------- #
+
+# CONFIGURAÇÃO PARA USUÁRIO FAZER:
+
+# Tem duas variáveis no inicio do script para você
+# configurar. Elas são:
+
+# BaseRptDir:   Aqui você especifica o nome do diretório
+#               para guardar os relatórios. Não precisa
+#               criar, só tem que especificar. O script
+#               cria para você, contando com que tenha
+#               permissão. Como Sempre, caminho absoluto
+#               Exemplo: /home/Reports
+
+# RootUser:     Aqui você coloca 0 ou deixa em branco
+#               para não rodar o script como root e não
+#               configurar atributo de imutável para os
+#               relatórios. Coloca 1 para rodar como root
+#               e ativar atributo de imutável. Qualquer
+#               outra coisa dá erro e termina script.
+
+# -------------------------------------------------------- #
+
+###### PARÂMETROS
+
+### Você configura aqui!
+
+BaseRptDir=''
+RootUser=''
+
+### A partir daqui não mexer ok!!
+
+Imutable='false'
+DateRpt=$(date +%d%m%y%s)
+Registry=/etc/passwd
+SysAccSubDir=$BaseRptDir/SystemAccounts
+FileBitSubDir=$BaseRptDir/FilePermissions
+OutSysAccRpt=$SysAccSubDir/Accounts-${DateRpt}.rpt
+OutFileBitRpt=$FileBitSubDir/FilePermissions-${DateRpt}.rpt
+
+# -------------------------------------------------------- #
+
+##### FUNÇÕES
+
+function ErrorExit {
+
+echo "$@" >&2
+echo Terminando script... >&2
+exit 1
+
+}
+
+
+function CompareItem {
+
+local PreviousReport=$(ls -1t ${2}/*.rpt | sed -n '2p')
+
+if [ -z "$PreviousReport" ]
+then
+    echo Não existem relatórios anteriores para comparar.
+    echo
+else
+    echo Procurando diferenças entre relatório atual
+    echo e o relatório anterior...
+    echo
+
+    local Differences=$(diff -q ${1} ${PreviousReport})
+
+    if [ -z "$Differences" ]
+    then
+        echo Não existem diferenças entre o relatório atual
+        echo e o último relatório.
+        echo
+    else
+        echo O relatório atual e o último relatório diferem.
+        echo
+
+        local PreviousCount=$(gawk '/^NÚMERO/{print $NF}' \
+        ${PreviousReport})
+
+        local CurrentCount=$(gawk '/^NÚMERO/{print $NF}' ${1})
+
+        echo '###############################################'
+        echo Número de itens em relatório anterior:
+        echo "$PreviousCount"
+        echo '###############################################'
+        echo
+        echo '###############################################'
+        echo Número de itens em relatório atual:
+        echo "$CurrentCount"
+        echo '##############################################'
+        echo
+    fi
+fi
+return
+
+}
+
+# -------------------------------------------------------- #
+
+##### VERIFICAÇÕES
+
+case "$RootUser" in
+
+0 | '')
+    Imutable='false'
+    ;;
+1)
+    Imutable='true'
+
+    [ $UID -ne 0 ] && {
+
+    ErrorExit 'Não está logado[a] como root ou sudo.'
+
+    }
+    ;;
+*)
+    ErrorExit Variável RootUser foi mal configurada.
+    ;;
+
+esac
+
+[ -z "$BaseRptDir" ] && {
+
+ErrorExit Diretório para guardar relatórios não especificado.
+
+}
+
+if [ ! -d "$BaseRptDir" ]
+then
+    mkdir $BaseRptDir 2> /dev/null || {
+
+    ErrorExit "Erro ao criar $BaseRptDir. Você tem permissão para o diretório?"
+
+    }
+
+    mkdir $SysAccSubDir
+    mkdir $FileBitSubDir
+fi
+
+# -------------------------------------------------------- #
+
+##### CONTAS DE SISTEMA (false/nologin)
+
+clear
+echo '***Compondo relatório de contas de sistema***'
+echo
+
+gawk '
+BEGIN {
+
+    FS=":";
+    count=0;
+
+    print "CONTAS DE SISTEMA COM SHELL FALSE|NOLOGIN:\n";
+    print "====================================================\n";
+    printf "%4s \t %s \t\t\t %s\n", "No.", "Conta", "Shell";
+    print "\n====================================================\n";
+}
+
+{
+    if ( $NF ~ /(false$|nologin$)/ ) {
+
+        count++;
+        printf "%2i\t%-15s \t%-15s\n", count, $1, $NF;
+    }
+}
+
+END {
+
+    print "\n====================================================\n";
+    print "NÚMERO TOTAL DE CONTAS: ", count;
+    print "\n====================================================\n";
+}
+
+' $Registry > $OutSysAccRpt
+
+echo Relatório completo.
+echo
+CompareItem $OutSysAccRpt $SysAccSubDir
+echo
+
+# -------------------------------------------------------- #
+
+##### ITENS COM BIT SUID|SGID
+
+echo '***Compondo relatório de itens com bit SUID|SGID***'
+echo
+
+find / -perm /6000 2> /dev/null | \
+gawk '
+BEGIN {
+
+    print "ITENS NO SISTEMA COM BIT SUID|SGID:\n";
+    print "========================================\n";
+    printf "%4s \t %6s\n", "No.", "Item";
+    print "\n========================================\n";
+}
+
+{
+    printf "%2i\t%-15s\n", NR, $0;
+}
+
+END {
+
+    print "\n========================================\n";
+    print "NÚMERO TOTAL DE ITENS: ", NR;
+    print "\n========================================\n"
+}
+
+' > $OutFileBitRpt
+
+echo Relatório completo.
+echo
+CompareItem $OutFileBitRpt $FileBitSubDir
+echo
+
+# -------------------------------------------------------- #
+
+##### IMUTÁVEL OU NÃO??
+
+[ "$Imutable" = 'true' ] && {
+
+chattr +i $OutSysAccRpt
+chattr +i $OutFileBitRpt
+
+}
+
+# -------------------------------------------------------- #
+
+##### FIM!!
+
+echo Todos os itens foram auditados.
+echo Você pode ver relatórios detalhados
+echo na hierarquia de pastas em $BaseRptDir
+echo Terminando script...
+exit 0
+
+# -------------------------------------------------------- #

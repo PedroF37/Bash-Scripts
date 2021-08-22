@@ -1,0 +1,621 @@
+#!/bin/bash
+#
+################################################################################
+#
+# SCRIPT    ebook-cli
+# AUTOR     Pedro Fernandes
+# E-MAIL    pedrobfernandes37@gmail.com
+# DATA      25-11-2020
+#
+################################################################################
+#
+# DESCRIÇÃO:
+#
+# Script que gerência livros digitais entre PC e dispositivo ebook-reader
+#
+# FUNÇÕES DO SCRIPT:
+#
+# * Cria pasta para biblioteca de livros no PC e no ebook-reader.
+# * Lista conteúdo da biblioteca de livros no pc e no ebook-reader
+# * Copia e remove livros das bibliotecas
+# * Cria pequeno arquivo de configuração com registro do ponto de montagem
+#   do dispositivo ebook-reader e local das Bibliotecas de livros.
+#   Arquivo de configuração, é arquivo oculto no HOME do usuário chamado
+#   .ebook-cli.conf
+#
+################################################################################
+#
+# LIMITAÇÕES:
+#
+# * Como script lê o arquivo de configuração para pegar dispositivo, ponto de
+#   montagem e local das pastas de Biblioteca no PC e no ebook-reader, se algum
+#   desses itens mudar, usuário terá ou que editar arquivo, ou que deletar
+#   arquivo e executar de novo o script para registrar novas configurações.
+#
+################################################################################
+#
+##### PARÂMETROS #####
+#
+CONFIG="${HOME}/.ebook-cli.conf"              # Arquivo de configuração
+PCLIBRARY="${PCLIBRARY:-${HOME}/Biblioteca}"  # Pasta dos livros no pc
+DEVICELIBRARY=""                              # Pasta dos livros no ebook-reader
+DEVICE=""                                     # Dispositivo ebook-reader
+_PAGER=""                                     # O pager; determinado por função
+                                              # FindPager (most|less|more)
+#
+################################################################################
+#
+##### FUNÇÕES #####
+#
+function RemoveTemp {
+
+rm -f "$registry" "$listremove" \
+"$listcopy" &> /dev/null
+return
+
+}
+#
+function RemoveConfig {
+
+rm -f "$CONFIG"
+return
+
+}
+#
+function GameOver {
+
+echo "$@" >&2
+exit 1
+
+}
+#
+function ExitSigInt {
+
+clear
+echo "Script interrompido por usuário."
+echo "Terminando..."
+RemoveTemp
+
+exit 0
+
+}
+#
+function Banner {
+
+clear
+echo -e "\t\t\t\t\t\t**************************************************"
+echo -e "\t\t\t\t\t\t*                                                *"
+echo -e "\t\t\t\t\t\t*                                                *"
+echo -e "\t\t\t\t\t\t*                 ebook-cli                      *"
+echo -e "\t\t\t\t\t\t*                                                *"
+echo -e "\t\t\t\t\t\t*                                                *"
+echo -e "\t\t\t\t\t\t*            Gerenciador de Livros CLI           *"
+echo -e "\t\t\t\t\t\t*                                                *"
+echo -e "\t\t\t\t\t\t*                                                *"
+echo -e "\t\t\t\t\t\t**************************************************"
+
+return
+
+}
+#
+function FindPager {
+
+if [ "$(which most)" &> /dev/null ]
+then
+    _PAGER="$(which most)"
+
+elif [ "$(which less)" &> /dev/null ]
+then
+    _PAGER="$(which less)"
+
+elif [ "$(which more)" &> /dev/null ]
+then
+    _PAGER="$(which more)"
+fi
+
+return
+
+}
+#
+# Aqui as pastas gravadas na função abaixo
+# são realmente criadas.
+# Se der errado quer dizer deve ter algum erro
+# nas permissões.
+# Nesse caso sai do script e deleta arquivo $CONFIG
+function CreateFolder {
+
+echo "Aguarde enquanto criamos as pastas"
+echo "para guardar seus livros..."
+
+if [ -d "$PCLIBRARY" ]
+then
+    echo  -e "\nPasta $PCLIBRARY já existe,"
+    echo -e "proseguindo...\n"
+else
+    if mkdir "$PCLIBRARY" &> /dev/null
+    then
+        echo -e "\nPasta $PCLIBRARY criada com sucesso no seu pc!!\n"
+    else
+        clear
+        RemoveConfig
+        RemoveTemp
+        GameOver "Erro ao criar pasta: $PCLIBRARY"
+    fi
+fi
+
+if [ -d "$DEVICELIBRARY" ]
+then
+    echo -e "\nPasta $DEVICELIBRARY já existe,"
+    echo -e "prosseguindo...\n"
+else
+    if mkdir "$DEVICELIBRARY" &> /dev/null
+    then
+        echo -e "\nPasta $DEVICELIBRARY criada com sucesso no seu ebook-reader!!\n"
+    else
+        clear
+        RemoveConfig
+        RemoveTemp
+        GameOver "Erro ao criar pasta: $DEVICELIBRARY"
+    fi
+fi
+
+echo "Pode agora passar livros para a pasta Biblioteca no seu pc"
+echo "e chamar o script para gerênciar os livros do pc e do seu ebook-reader!!"
+echo "Para usar outro dispositivo ebook-reader"
+echo "delete arquivo $CONFIG e rode de novo o script!!"
+
+exit
+
+}
+#
+# Aqui grava em $CONFIG as pastas onde vão ficar os livros
+# Grava duas pastas: $PCLIBRARY tem a pasta no pc
+# $DEVICELIBRARY tem a pasta que fica no ebook-reader
+function RecordConfig {
+
+while read line
+do
+    # Se removendo do fim a maior ocorrência de espaço
+    # seguido de qualquer coisa sobrar DEVICE
+    if [ "${line%% *}" = "DEVICE" ]
+    then
+        # DEVICE recebe o que sobra
+        DEVICE="${line##* }"
+        DEVICELIBRARY="${DEVICE}/Biblioteca"
+        #
+        echo "PCLIBRARY = ${PCLIBRARY}" >> "$CONFIG"
+        echo "DEVICELIBRARY = ${DEVICELIBRARY}" >> "$CONFIG"
+        echo "_PAGER = ${_PAGER}" >> "$CONFIG"
+        CreateFolder
+    else
+        clear
+        RemoveConfig
+        RemoveTemp
+        GameOver "Erro!! Saindo do script."
+    fi
+
+done < "$CONFIG"
+
+}
+#
+# O fato de ter digitado número não quer
+# dizer que digitou correto. Inclusive pode
+# ter pressionado enter apenas e foi aceite.
+function ValidChoice {
+
+case "$number" in
+
+    "")
+        # Se tiver dado ENTER no case da função abaixo
+        # vai corresponder com todos os números.
+        # Não pode. Aqui pega esse caso.
+        clear
+        RemoveTemp
+        GameOver "Não digitou nada!! Saindo do script..."
+        ;;
+     *)
+        # Se digitou número certo, então
+        # guarda em arquivo de configuração.
+        if grep -q "^$number" "$registry"
+        then
+            sed -n "s/^$number/DEVICE =/p" "$registry" | \
+            cut -d ' ' -f 1,2,5 >> "$CONFIG"
+            RecordConfig
+        else
+            # Não deu apenas enter (foi número)
+            # mas mesmo assim número não está
+            # certo? Sai!!
+            clear
+            RemoveTemp
+            GameOver "Erro!! Número digitado é incorreto. Saindo..."
+        fi
+        ;;
+
+esac
+
+}
+#
+# Aqui escolhe o dispositivo correspondente
+# que mostra na listagem da função abaixo.
+function ChooseDevice {
+
+for try in {1..3}
+do
+    clear
+    echo -e "\n\nPor favor digite o número do dispositivo"
+    echo -e "que corresponde ao seu ebook-reader: "
+    read number
+
+    case "$number" in
+
+        # Só aceita número, o resto não passa
+        # Mas aceita ENTER!!
+        *[!0-9]*)
+            if [ "$try" -eq 2 ]
+            then
+                clear
+                RemoveTemp
+                GameOver "Tentativas esgotadas!!"
+                break
+            fi
+            echo "Erro. Tente de novo"
+            ;;
+        *)
+            # Se estamos aqui, certo ou errado
+            # digitou número; (ou enter!!).
+            clear
+            break
+            ;;
+
+  esac
+done
+
+ValidChoice
+
+}
+#
+# Se não tiver arquivo de configuração criado
+# função é chamada. Se tiver, não é chamada.
+function FindDevice {
+
+echo -e "\n\t\t\t\t\t\tNão foi encontrado arquivo de configuração"
+echo -e "\t\t\t\t\t\tIremos criar um para você agora."
+echo -e "\t\t\t\t\t\tEste passo é necessário apenas uma vez"
+echo -ne "\n\n\t\t\t\t\t\tAperte <ENTER> para continuar: "
+read enter
+
+# Acha os dispositivos montados. Númera com o sed
+# para usuário digitar o número do dispositivo.
+# Podia usar o nl, cat etc... ,
+# mas fica mais bonitinho de se ver na tela com o sed!!
+local device="$(mount | grep -v '^[^/]' | \
+cut -d ' ' -f 1-3 | sed '=' | sed 'N; s/\n/ /')"
+
+
+# Cria arquivo temporário para armazenar saída
+# da substituíção acima, para comparar depois
+# com escolha do usuário.
+local registry="$(mktemp $HOME/tempXXXXXX)"
+echo "$device" >> "$registry"
+
+clear
+echo -e "Estes são os dispositivos no sistema:\n\n"
+sleep 2
+$_PAGER "$registry"
+
+ChooseDevice
+
+}
+#
+function ListContent {
+
+clear
+echo "Deseja listar conteúdo de qual biblioteca?"
+read -n 1 -p "1. Pc, 2. ebook-reader: " choice
+
+case "$choice" in
+
+    1)
+        clear
+        ls -sh "$PCLIBRARY" | $_PAGER
+        ;;
+    2)
+        clear
+        ls -sh "$DEVICELIBRARY" | $_PAGER
+        ;;
+    *)
+        clear
+        echo "Erro!! Opção inválida."
+        RemoveTemp
+        sleep 2
+        ;;
+
+esac
+
+return
+
+}
+#
+function CopyContent {
+
+clear
+echo "Os livros que se encontram na Biblioteca:"
+sleep 2
+clear
+
+local listcopy="$(mktemp $HOME/listcopyXXXXXX)"
+ls "$source" | sed '=' | sed 'N; s/\n/: /' > $listcopy
+
+$_PAGER  $listcopy
+
+echo -e "\n\nPor favor digite o(s) número(s) que corresponde"
+echo "ao(s) livro(s) que quer copiar, um atrás do outro"
+echo -n "separados por espaço: "
+read books
+
+for item in $(echo $books)
+do
+
+    if grep -q "^${item}: " "$listcopy"
+    then
+        local listcopy2=$(grep "^${item}: " "$listcopy" | \
+                          cut -d ' ' -f 2-)
+        #
+        #
+        echo "Copiando item ${item}..."
+        echo "cp ${source}/$listcopy2 $target"
+        cp -u "${source}/$listcopy2" "$target"
+        sync
+    else
+        echo
+        echo "########################################"
+        echo
+        echo "Erro. Item ${item} não existe na lista"
+        echo "Logo não iremos copiar."
+        echo "Continuando..."
+        echo
+        echo "#######################################"
+    fi
+
+done
+
+RemoveTemp
+sleep 3
+
+return
+
+}
+#
+function RemoveContent {
+
+clear
+echo "Os livros que se encontram na Biblioteca:"
+sleep 2
+clear
+
+local listremove="$(mktemp $HOME/listremoveXXXXXX)"
+ls "$target" | sed '=' | sed 'N; s/\n/: /' > $listremove
+
+$_PAGER $listremove
+
+echo -e "\n\nPor favor digite o(s) número(s) que corresponde"
+echo "ao(s) livro(s) que quer remover, um atrás do outro"
+echo -n "separados por espaço: "
+read books
+
+for item in $(echo $books)
+do
+
+    if grep -q "${item}: " "$listremove"
+    then
+        local listremove2=$(grep "${item}: " "$listremove" | \
+                            cut -d ' ' -f 2-)
+        #
+        #
+        echo "Removendo item ${item}..."
+        echo "rm -f ${target}/$listremove2"
+        rm -f "${target}/$listremove2"
+        sync
+    else
+        echo
+        echo "########################################"
+        echo
+        echo "Erro. Item $item não existe na lista."
+        echo "Logo não iremos remover."
+        echo "Continuando..."
+        echo
+        echo "########################################"
+    fi
+
+done
+
+RemoveTemp
+sleep 3
+
+return
+
+}
+#
+function ChooseCopyContent {
+
+local source=""
+local target=""
+
+clear
+echo "Deseja copiar de onde para onde?"
+echo "1. pc para ebook"
+echo "2. ebook para pc"
+echo -en "Digite a opção: "
+read -n 1 opcao
+
+case "$opcao" in
+
+    1)
+        source="$PCLIBRARY"
+        target="$DEVICELIBRARY"
+        CopyContent
+        ;;
+    2)
+        source="$DEVICELIBRARY"
+        target="$PCLIBRARY"
+        CopyContent
+        ;;
+    *)
+        clear
+        echo "Erro!! Opção inválida"
+        sleep 2
+        ;;
+
+esac
+
+return
+
+}
+#
+function ChooseRemoveContent {
+
+local target=""
+
+clear
+echo "Deseja remover de onde."
+echo "1. Biblioteca do pc"
+echo "2. Biblioteca do Ebook-reader"
+echo -en "Escolha a opção: "
+read -n 1 opcao
+
+case "$opcao" in
+
+    1)
+        target="$PCLIBRARY"
+        RemoveContent
+        ;;
+    2)
+        target="$DEVICELIBRARY"
+        RemoveContent
+        ;;
+    *)
+        clear
+        echo "Erro!! Opção invávida"
+        sleep 2
+        ;;
+
+esac
+
+return
+
+}
+#
+function Menu {
+
+while true
+do
+
+    clear
+    Banner
+    echo -e "\n\t\t\t\t\t\t\tBem Vindo(a) ao ebook-cli!!\n\n"
+    echo -e "\t\t\t\t\t\t\tPor favor escolha o que quer fazer\n\n"
+    echo -e "\t\t\t\t\t\t1. Listar conteúdo das Biblotecas de livros"
+    echo -e "\t\t\t\t\t\t2. Copiar livros das Bibliotecas"
+    echo -e "\t\t\t\t\t\t3. Remover livros das Bibliotecas"
+    echo -e "\t\t\t\t\t\t0. Saír do script sem executar nenhuma ação\n\n\n"
+    echo -en "\n\n\t\t\t\t\tPor favor digite sua opção: "
+    read -n 1 opcao
+
+    case "$opcao" in
+
+    1)
+        ListContent
+        ;;
+    2)
+        ChooseCopyContent
+        ;;
+    3)
+        ChooseRemoveContent
+        ;;
+    0)
+        clear
+        echo "Terminando script."
+        echo "Obrigado por usar o ebook-cli!!"
+        break
+        ;;
+    *)
+        clear
+        RemoveTemp
+        GameOver "Erro!! Opção inválida. Saindo..."
+        break
+        ;;
+
+  esac
+
+done
+
+}
+#
+# Aqui lê do arquivo de configuração
+# Torna os dados do arquivo disponiveis
+# para o script
+function ReadConfig {
+
+# Aqui faz backup do descritor 0 (STDIN)
+exec 6<&0
+exec 0< "$CONFIG"
+
+while read line
+do
+
+    # Se removendo tudo do final em $line,
+    # depois do espaço sobrar:
+    case "${line%% *}" in
+
+    DEVICE)
+        # DEVICE= Tudo o que está
+        # em $line menos DEVICE =
+        DEVICE="${line##* }"
+        ;;
+    PCLIBRARY)
+        PCLIBRARY="${line##* }"
+        ;;
+    DEVICELIBRARY)
+        DEVICELIBRARY="${line##* }"
+        ;;
+    _PAGER)
+        _PAGER="${line##* }"
+        ;;
+    *)
+        :
+        ;;
+
+    esac
+
+done
+
+# Restaura STDIN (0) para ser usado
+# no script
+exec 0<&6
+Menu
+
+}
+#
+################################################################################
+#
+##### INICIO #####
+#
+trap ExitSigInt SIGINT
+trap RemoveTemp EXIT
+
+# Testa se já tem arquivo de configuração
+# Se tem chama função ReadConfig. Senão
+# chama função FindDevice. Esta depois
+# chama as outras.
+if [ -e "$CONFIG" -a -s "$CONFIG" ]
+then
+    ReadConfig
+else
+    Banner
+    FindPager
+    FindDevice
+fi
+
+exit 0
+#
+################################################################################
