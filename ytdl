@@ -1,0 +1,254 @@
+#!/bin/bash
+#
+################################################################################
+#
+# SCRIPT    ytdl
+# AUTOR     Pedro Fernandes
+# E-MAIL    pedrobfernandes37@gmail.com
+#
+################################################################################
+#
+# DESCRIÇÃO:
+#
+# Script que funciona como um 'frontend ou wrapper' para o programa
+# youtube-dl. Das inúmeras opções do youtube-dl, o script usa apenas
+# as opções de baixar audio e videos, pudendo escolher entre audio apenas
+# video apenas, audio e video, playlist ou item único.
+# Os formatos de audio e video são, mp3 para audio e opção 'best'
+# para o video.
+# Claro, sinta-se á vontade de entupir o script de mais opções se quiser...
+#
+################################################################################
+#
+# DEPÊNDENCIAS:
+#
+# * youtube-dl
+# * ffmpeg
+#
+################################################################################
+#
+###### PARÂMETROS #####
+#
+Script=ytdl
+BackEnd=youtube-dl
+FfMpeg=ffmpeg
+OutputDirectory=$HOME/youtube-dl
+AudioFormat="--extract-audio --audio-format mp3"
+VideoFormat="-f best"
+Ext="%(title)s.%(ext)s"
+#
+################################################################################
+#
+##### FUNÇÕES #####
+#
+function ErrorExit {
+
+echo $Script: $@ >&2
+exit 1
+
+}
+#
+function RemoveTemp {
+
+rm -f ${HOME}/index.html
+return
+
+}
+#
+function ExitSigint {
+
+clear
+echo Script interrompido por usuário. 2>&1
+RemoveTemp
+exit 0
+
+}
+#
+function Banner {
+
+echo -e "\t\t\t\t\t\t**********************************************"
+echo -e "\t\t\t\t\t\t*                                            *"
+echo -e "\t\t\t\t\t\t*                  ytdl                      *"
+echo -e "\t\t\t\t\t\t*                                            *"
+echo -e "\t\t\t\t\t\t*         FrontEnd para youtube-dl           *"
+echo -e "\t\t\t\t\t\t*                                            *"
+echo -e "\t\t\t\t\t\t**********************************************"
+
+return
+
+}
+#
+function FindItems {
+
+type $BackEnd &> /dev/null || {
+
+ErrorExit Precisa ter o youtube-dl instalado.
+
+}
+
+type $FfMpeg &> /dev/null || {
+
+ErrorExit Precisa ter o ffmpeg instalado.
+
+}
+
+
+}
+#
+function Update {
+
+clear
+echo Aguarde enquanto procuramos por atualizações...
+echo
+
+Version=$(youtube-dl --version | sed 's/\.//g')
+Site="https://youtube-dl.org"
+
+wget -cq $Site || ErrorExit Erro ao contactar $Site.
+
+Index=$(grep -Es '[0-9]{4}\.[0-9]{2}\.[0-9]{2}' index.html \
+               | cut -d " " -f 4 | cut -c 3-12 | sed 's/\.//g')
+
+if [ $Version -lt $Index ]
+then
+    echo Versão mais atual do programa $Backend encontrada.
+else
+   echo Versão mais atual já está instalada.
+fi
+
+RemoveTemp
+exit 0
+
+}
+#
+function CreateFolder {
+
+if [ ! -d $OutputDirectory ]
+then
+    mkdir -p $OutputDirectory/{Musica,Video}
+fi
+
+}
+#
+#
+function LoopFile {
+
+clear
+read -p "Digite o nome do arquivo: > " File
+echo
+
+FileFind=$(find $HOME -type f -iname $File 2> /dev/null)
+
+if [ -n "$FileFind" -a -r "$FileFind" -a -s "$FileFind" ]
+then
+    read -n1 -p "[A/a] para extrair audio | [V/v] para video normal: > " Answer
+    echo
+
+    case $Answer in
+    A | a)
+        cd $OutputDirectory/Musica
+        youtube-dl --batch-file $FileFind $AudioFormat -o $Ext
+        echo Downloads estão dentro da pasta $OutputDirectory/Musica.
+        ;;
+    V | v)
+        cd $OutputDirectory/Video
+        youtube-dl --batch-file $FileFind $VideoFormat -o $Ext
+        echo Downloads estão dentro da pasta $OutputDirectory/Video.
+        ;;
+    *)
+        ErrorExit Input inválido.
+        ;;
+    esac
+else
+    ErrorExit Arquivo não existe, está vazio ou não não tem permissão de leitura.
+fi
+
+}
+#
+function Interactive {
+
+clear
+Mode=""
+
+echo -n "Digite ou cole a url : > "
+read Url
+
+read -n1 -p "[A/a] para extrair audio | [V/v] para video normal: > " Answer
+
+echo
+read -n1 -p "[1] para baixar playlist | [2] para baixar arquivo único: > " Answer2
+echo
+
+if [ $Answer2 -eq 1 ]
+then
+    Mode="--yes-playlist"
+else
+    Mode="--no-playlist"
+fi
+
+case $Answer in
+A | a)
+    cd $OutputDirectory/Musica
+    youtube-dl $Mode $AudiFormat -o $Ext $Url
+    echo Download está dentro da pasta $OutputDirectory/Musica.
+    ;;
+V | v)
+    cd $OutputDirectory/Video
+    youtube-dl $Mode $VideoFormat -o $Ext $Url
+    echo Download está dentro da pasta $OutputDirectory/Video.
+    ;;
+*)
+    ErrorExit Input inválido.
+    ;;
+esac
+
+}
+#
+function Menu {
+
+clear
+Banner
+echo
+echo -e "\t\t\t\t\t\t\tPor favor escolha:\n"
+echo -e "\t\t\t\t\t\t1. Baixar a partir de arquivo (1 item por linha)"
+echo -e "\t\t\t\t\t\t2. Baixar em modo interativo"
+echo -e "\t\t\t\t\t\t3. Verificar atualizações de $BackEnd"
+echo -e "\t\t\t\t\t\t0. Sair do script"
+
+echo -en "\n\n\t\t\t\t\t\t\tDigite a opção: > "
+read -n 1 Option
+
+case $Option in
+1)
+    LoopFile
+    ;;
+2)
+    Interactive
+    ;;
+3)
+    Update
+    ;;
+0)
+    echo
+    echo Terminando script...
+    exit 0
+    ;;
+*)
+    echo
+    ErrorExit Input inválido.
+    ;;
+esac
+
+}
+#
+################################################################################
+#
+###### INICIO #####
+#
+trap ExitSigint SIGINT
+FindItems
+CreateFolder
+Menu
+exit 0
+#
+################################################################################
