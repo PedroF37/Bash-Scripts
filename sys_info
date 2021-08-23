@@ -1,0 +1,142 @@
+#!/bin/bash
+#
+################################################################################
+#
+# SCRIPT    sys_info
+# AUTOR     Pedro Fernandes
+# E-MAIL    pedrobfernandes37@gmail.com
+#
+################################################################################
+#
+# DESCRIÇÃO:
+#
+# Script que mostra um 'snapshot' do sistema no momento que é executado,
+# com informações de vários itens no sistema.
+# Itens são:
+#
+# * Horário e uptime do sistema
+# * Espaço nos discos (df - total, ocupado, livre)
+# * Os 10 diretórios mais cheios nos HOMES (du)
+# * Memória do sistema (free sem swap)
+# * Temperaturas atuais do sistema (comando sensor - lmsensors)
+#
+# Itens são mostrados na tela (aconselhado usar paginador), ou,
+# podem ser enviados para arquivo usando a opção '-o | --output'
+#
+################################################################################
+#
+##### PARÂMETROS #####
+#
+Date=$(date '+%d-%m-%Y %H:%M')
+LogDate=${Date% *}
+Title="Relatório do Sistema para: $HOSTNAME"
+Generated="Relatório Gerado: $Date, por $USER"
+#
+################################################################################
+#
+###### FUNÇÕES #####
+#
+function Usage {
+
+clear
+cat <<EOF
+Uso: ${0##*/} | ${0##*/} [OPÇÔES]
+
+ONDE OPÇÕES:
+
+-o | --output    Envia informações para arquivo no seu HOME
+-h | --help      Mostra esta ajuda e termina
+
+Se for chamado sem opção, mostra informações na tela, sendo nesse caso
+aconselhado usar paginador (ex: most | less)
+EOF
+
+}
+#
+function Report {
+
+echo -e "\n\t\t\t\t\t\t$Title\n"
+echo -e "\n\t\t\t\t\t\t$Generated\n\n\n"
+
+uptime | gawk 'BEGIN {FS=","} {printf "Horário Atual e Uptime do Sistema:" "\n"}
+{print $1 "\n"}' |
+sed 's/,$//' |
+sed 'N; s/\n/ /'
+
+echo -e "\n\nEspaço Ocupado no(s) disco(s):\n"
+
+df -h | gawk 'BEGIN {
+printf "Unidade" "\t\t" "Total" "\t" "Usado" "\t" "Disponivel" "\t" "Montd." "\n"}
+/^\/dev\/[sh][a-z]{2}[0-9]?/{print $1, "\t" $2, "\t" $3, "\t" $4, "\t\t" $6}'
+
+echo -e "\n\n\nOs 10 diretórios mais cheios no(s) home(s):\n"
+
+if [ $UID -eq 0 ]
+then
+    DirList="/home/*"
+else
+    DirList="$HOME"
+fi
+
+for Directory in $DirList
+do
+    echo -e "\nDiretório $Directory:\n"
+
+    du -Sh "$Directory" 2> /dev/null |
+    sort -rh |
+    sed '{11,$D; =}' |
+    sed 'N; s/\n/ /' |
+    gawk '{printf $1 ":" "\t" $2 "\t" $3 "\n"}'
+
+done
+
+echo -e "\n\n\nMemória do Sistema:\n"
+
+free -h --mega |
+sed '$d' |
+sed '1d' |
+
+gawk 'BEGIN {
+printf "Total" "\t" "Usada" "\t" "Livre" "\t" "Buffer/Cache" "\t" "Disponivel\n"}
+{printf $2 "\t" $3 "\t" $4 "\t\t" $6 "\t" $7 "\n"}'
+
+
+echo -e "\n\n\nTemperaturas atuais:\n"
+sensors
+
+echo
+echo "É tudo."
+
+}
+#
+################################################################################
+#
+##### INICIO #####
+#
+if [ $# -eq 0 ]
+then
+   Report
+#
+elif [ $# -eq 1 ]
+then
+    case $1 in
+    -o | --output)
+        Report > $HOME/${0##*/}-$LogDate.log
+        echo "O relatório foi salvo em: $HOME/${0##*/}-$LogDate.log"
+        ;;
+    -h | --help)
+        Usage
+        ;;
+     *)
+        Usage
+        exit 1
+        ;;
+    esac
+else
+    Usage
+    exit 1
+fi
+
+exit 0
+#
+################################################################################
