@@ -13,3 +13,4 @@ Para usar os scripts, por favor lêr antes o cabecalho de cada um para informaç
 * `omdb-cli`  - Usa a API do site `https://www.omdbapi.com` para pegar dados de filmes e séries (Precisa pegar chave gratuita da API)
 * `ison`      - Testa conetividade da máquina nos vários pontos da rede usando a ferramenta ping
 * `sysaudit`  - Audita e faz relatório de 2 itens do sistema. Arquivos com bit SUID/SGID e contas de Sistema (com login false/nologin)
+* `sys_info`  - Produz um snapshot do sistema com informações do uptime, memória, espaço em discos, diretórios ocupando o maior espaço (mostra na tela ou pode enviar para arquivo)
