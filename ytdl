@@ -160,7 +160,7 @@ then
         ;;
     esac
 else
-    ErrorExit Arquivo não existe, está vazio ou não tem permissão de leitura.
+    ErrorExit Arquivo não existe, está vazio ou não não tem permissão de leitura.
 fi
 
 }
@@ -209,13 +209,13 @@ function Menu {
 clear
 Banner
 echo
-echo -e "\t\t\t\t\t\t\tPor favor escolha:\n"
+echo -e "\t\t\t\t\t\t\t   Por favor escolha:\n"
 echo -e "\t\t\t\t\t\t1. Baixar a partir de arquivo (1 item por linha)"
 echo -e "\t\t\t\t\t\t2. Baixar em modo interativo"
 echo -e "\t\t\t\t\t\t3. Verificar atualizações de $BackEnd"
 echo -e "\t\t\t\t\t\t0. Sair do script"
 
-echo -en "\n\n\t\t\t\t\t\t\tDigite a opção: > "
+echo -en "\n\n\t\t\t\t\t\tDigite a opção: > "
 read -n 1 Option
 
 case $Option in
