@@ -160,7 +160,7 @@ then
         ;;
     esac
 else
-    ErrorExit Arquivo não existe, está vazio ou não não tem permissão de leitura.
+    ErrorExit Arquivo não existe, está vazio ou não tem permissão de leitura.
 fi
 
 }
