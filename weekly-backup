@@ -1,0 +1,356 @@
+#!/bin/bash
+#
+################################################################################
+#
+# SCRIPT   weekly-backup
+# AUTOR    Pedro Fernandes
+# E-MAIL   pedrobfernandes37@gmail.com
+# DATA     17-05-2021
+#
+################################################################################
+#
+# DESCRIÇÃO:
+#
+# Script para fazer backups semanais, usando a ferramenta
+# tar. Backups serão 1 backup completo (nível 0) por mês,
+# e os restantes serão backups diferenciais (nível 1) por
+# semana.
+#
+################################################################################
+#
+# FUNCIONAMENTO:
+#
+# O script usa a opção '-g' do tar, para criar arquivo de
+# snapshot, com os metadados dos itens incluidos no backup.
+# Se usarmos sempre esse mesmo arquivo como referência o
+# tar cria backups incrementais, porque a cada backup esse
+# arquivo é atualizado. Mas, se em cada novo backup, nós
+# fizermos uma cópia do arquivo original, e usarmos sempre
+# uma cópia, então o backup vai conter as diferenças entre
+# o dia atual e o dia do primeiro backup (o backup completo)
+# É isso que o script faz.
+#
+# Se colocar o script para rodar no cron, é aconselhavél redirecionar
+# a saída padrão e de erro.
+#
+################################################################################
+#
+# PROCEDIMENTO:
+#
+# A primeira vez que o script for executado, o script cria um backup completo
+# (full) e cria o arquivo de snapshot:
+# 'FullBackup-data-do-backup.snar'
+# Na semana seguinte, quando for executado, o script copia o arquivo de
+# snapshot original e nomeia a cópia de:
+# 'DiffBackup-data-do-backup-to-data-da-próxima-semana.snar'
+#
+# Todas as semanas o script vai fazendo isso e, também, todas as semanas
+# o script verifica quantos arquivos de snapshot 'DiffBackup...' existem.
+# Se existirem 3 ou mais, o script cria uma pasta onde armazena todos os
+# backups até ao momento e começa então de novo. Cria o backup completo,
+# na semana seguinte cria o backup diferencial etc.
+#
+################################################################################
+#
+# CONFIGURAÇÔES PARA O USUÁRIO:
+#
+# O script usa 3 variáveis que estão na secção PARÂMETROS que é para
+# você configurar. Elas são:
+#
+# * Compact
+#      Nesta, você especifica 'gzip|bzip|xz' para o método de
+#      compactação desejado.
+#
+# * ConfigFile
+#      Nesta, você especifica o arquivo com a lista dos items
+#      para backup. Por favor colocar caminho absoluto. Exemplo:
+#      ConfigFile=/home/usuário/nome-do-arquivo
+#
+#      Formato do arquivo:
+#
+#      /home/usuário/Documentos
+#      /home/usuário/Músicas
+#      etc...
+#
+# * BackupDestiny
+#      Nesta, você especifica o destino do backup.
+#      Exemplo: BackupDestiny=/home/Backup
+#
+################################################################################
+#
+# NOTA FINAL:
+#
+# Criei o script para fazer um backup por semana, pois é o que me convém.
+# Dito isto, não tem nada no script que obrigue a rodar uma vez por semana.
+# Você pode rodar 2,3 vezes por semana, uma vez por ano 2 vezes de 25 em 25
+# anos... tanto faz, pois o script verifica se é altura de fazer um backup
+# completo não usando datas mas sim vendo quantos arquivos de snapshot existem.
+#
+################################################################################
+#
+##### PARÂMETROS #####
+#
+### Você configura aqui
+#
+Compact=
+ConfigFile=
+BackupDestiny=
+#
+### Daqui em diante não precisa
+### mexer mais ok?
+#
+DateBackup=$(date +%d-%m-%Y)
+NextWeek=$(date -d "next week" +%d-%m-%Y)
+LastMonth=$(date -d "last month" +%d-%m-%Y)
+FullSnapshot=FullBackup-${DateBackup}.snar
+DiffSnapshot=DiffBackup-${DateBackup}-to-${NextWeek}.snar
+#
+################################################################################
+#
+##### FUNÇÕES #####
+#
+function ErrorExit {
+
+echo "$@" >&2
+echo Terminando script... >&2
+exit 1
+
+}
+#
+function Completed {
+
+echo Backup concluído com sucesso.
+echo Terminando script....
+exit 0
+
+}
+#
+function Archive {
+
+cd $BackupDestiny || {
+
+ErrorExit Não conseguimos entrar em $BackupDestiny
+
+}
+
+mkdir Backup-$LastMonth
+mv *.snar *.t[gbx]z Backup-$LastMonth
+return
+
+}
+#
+function FullBackup {
+
+cd $BackupDestiny || {
+
+ErrorExit Não conseguimos entrar em $BackupDestiny
+
+}
+
+echo
+echo Iniciando Backup Completo....
+tar -g $FullSnapshot $Comp $OutFullArchive $BackupList 2> /dev/null
+Completed
+
+}
+#
+function DiffBackup {
+
+cd $BackupDestiny || {
+
+ErrorExit Não conseguimos entrar em $BackupDestiny
+
+}
+
+cp FullBackup*.snar "$DiffSnapshot"
+echo
+echo Iniciando Backup Diferencial...
+tar -g $DiffSnapshot $Comp $OutDiffArchive $BackupList 2> /dev/null
+Completed
+
+}
+#
+function HowMany {
+
+cd $BackupDestiny || {
+
+ErrorExit Não conseguimos entrar em $BackupDestiny
+
+}
+
+HowManyDiff=$(ls -1t DiffBackup*.snar | wc -l)
+
+if [ "$HowManyDiff" -ge 3 ]
+then
+    Archive
+    FullBackup
+else
+    DiffBackup
+fi
+
+}
+#
+################################################################################
+#
+##### VERIFICAÇÕES #####
+#
+# Verificamos por existência de diretório, arquivo de
+# configuração, permissões, etc...
+#
+[ -z "$BackupDestiny" ] && {
+
+ErrorExit Não especificou pasta de destino dos backups.
+
+}
+#
+[ ! -d "$BackupDestiny" ] && {
+
+ErrorExit Pasta $BackupDestiny não existe.
+
+}
+#
+[ ! -r "$BackupDestiny" ] || [ ! -w "$BackupDestiny" ] || [ ! -x "$BackupDestiny" ] && {
+
+ErrorExit Precisa de ter permissão para a pasta $BackupDestiny
+
+}
+#
+[ -z "$ConfigFile" ] && {
+
+ErrorExit Não especificou arquivo com lista de itens para fazer backup.
+
+}
+#
+[ ! -f "$ConfigFile" ] && {
+
+ErrorExit $ConfigFile não existe ou não é arquivo regular.
+
+}
+#
+[ ! -r "$ConfigFile" ] || [ ! -s "$ConfigFile" ] && {
+
+ErrorExit Não tem permissão de leitura para $ConfigFile ou arquivo está vazio.
+
+}
+#
+if [ -z "$Compact" ]
+then
+    ErrorExit Não especificou o método de compactação
+else
+    case $Compact in
+    #
+    gzip)
+        Comp=-czf
+        OutFullArchive=FullBackup-${DateBackup}.tgz
+        OutDiffArchive=DiffBackup-${DateBackup}.tgz
+        ;;
+    bzip)
+        Comp=-cjf
+        OutFullArchive=FullBackup-${DateBackup}.tbz
+        OutDiffArchive=DiffBackup-${DateBackup}.tbz
+        ;;
+    xz)
+        Comp=-cJf
+        OutFullArchive=FullBackup-${DateBackup}.txz
+        OutDiffArchive=DiffBackup-${DateBackup}.txz
+        ;;
+    *)
+        ErrorExit Input Inválido
+    #
+    esac
+fi
+#
+################################################################################
+#
+##### LISTA DE ITENS PARA BACKUP #####
+#
+echo Compondo lista de itens para backup.
+#
+# Lê o arquivo de configuração. Entada padrão é
+# ConfigFile. Line, vai guardando as linhas lidas
+# até ao momento, para falar em que linha  está
+# o item inexistente, ou, o item ao qual usuário
+# não tem permissão.
+#
+exec 3<&0
+exec 0<$ConfigFile
+Line=1
+read Item
+
+while [ $? -eq 0 ]
+do
+    if [ -f "$Item" ] || [ -d "$Item" ]
+    then
+        #
+        # Vemos se tem permissão. Ou é dono
+        # ou é root. Se tiver permissão ok,
+        # se não, saímos do script.
+        #
+        if [ -O "$Item" ] || [ $UID -eq 0 ]
+        then
+            :
+        else
+            echo
+            echo '############################################################'
+            echo
+            echo Você não tem permissão para Item ${Item##*/} >&2
+            echo especificado na linha $Line de ${ConfigFile##*/} >&2
+            echo Terminando script... >&2
+            echo
+            echo '###########################################################'
+            exit 1
+        fi
+        #
+        # Juntamos itens em lista.
+        #
+        BackupList="$BackupList $Item"
+    else
+        #
+        # Se não existir o Item, simplesmente
+        # avisamos sem sair com erro.  Usuário
+        # pode ter deletado arquivo/diretório e
+        # simplesmente esqueceu de atualizar
+        # ConfigFile.
+        #
+        echo
+        echo '##############################################################'
+        echo
+        echo O Item ${Item##*/} não existe.
+        echo Está especificado na linha $Line de ${ConfigFile##*/}.
+        echo Não iremos incluir no backup. Prosseguindo...
+        echo
+        echo '##############################################################'
+    fi
+
+    Line=$(($Line + 1))
+    read Item
+done
+exec 0<&3
+
+echo
+echo Composição de lista concluída.
+echo
+#
+################################################################################
+#
+##### BACKUP #####
+#
+Match=$(ls $BackupDestiny/FullBackup*.snar 2> /dev/null)
+
+if [ -z "$Match" ]
+then
+    FullBackup
+fi
+
+DiffBKP=$(ls $BackupDestiny/DiffBackup*.snar 2> /dev/null)
+
+if [ -z "$DiffBKP" ]
+then
+    DiffBackup
+else
+    HowMany
+fi
+
+exit 0
+#
+################################################################################
