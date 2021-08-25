@@ -2,7 +2,7 @@
 #
 ################################################################################
 #
-# SCRIPT    ytdl
+# SCRIPT    avtube
 # AUTOR     Pedro Fernandes
 # E-MAIL    pedrobfernandes37@gmail.com
 #
@@ -29,7 +29,7 @@
 #
 ###### PARÂMETROS #####
 #
-Script=ytdl
+Script=avtube
 BackEnd=youtube-dl
 FfMpeg=ffmpeg
 OutputDirectory=$HOME/youtube-dl
@@ -68,7 +68,7 @@ function Banner {
 
 echo -e "\t\t\t\t\t\t**********************************************"
 echo -e "\t\t\t\t\t\t*                                            *"
-echo -e "\t\t\t\t\t\t*                  ytdl                      *"
+echo -e "\t\t\t\t\t\t*                  avtube                    *"
 echo -e "\t\t\t\t\t\t*                                            *"
 echo -e "\t\t\t\t\t\t*         FrontEnd para youtube-dl           *"
 echo -e "\t\t\t\t\t\t*                                            *"
