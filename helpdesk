@@ -63,7 +63,12 @@
 #
 # VERSÃO/CHANGELOG:
 #
-### 1.0       Inicio de Script
+### 1.0     Inicio de Script
+#
+### 1.1     Melhoria na função 'QueryData', para usuário não ter
+###         que digitar a coluna que quer consultar. Agora apenas
+###         digita um número e a função traduz esse número para o
+###         nome da coluna correspondente.
 #
 ################################################################################
 #
@@ -351,13 +356,39 @@ return
 #
 function QueryData {
 
-clear
-echo As colunas disponiveis são:
-echo id, hardware, software, description e solution.
+Column=''
 
+clear
+echo -e "As colunas disponiveis são:\n"
+echo 1. id
+echo 2. hardware
+echo 3. software
+echo 4. description
+echo 5. solution
+echo -en "\nDigite o número correspondente: "
+read -n1 Number
 echo
-echo -n "Digite a coluna que contém o termo de pesquisa: "
-read Column
+
+case $Number in
+1)
+    Column='id'
+    ;;
+2)
+    Column='hardware'
+    ;;
+3)
+    Column='software'
+    ;;
+4)
+    Column='description'
+    ;;
+5)
+    Column='solution'
+    ;;
+*)
+    ErrorExit Input inválido. Terminando...
+    ;;
+esac
 
 echo -en "\nDigite o termo de pesquisa: "
 read Search
