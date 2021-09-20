@@ -317,11 +317,11 @@ case "$choice" in
 
     1)
         clear
-        ls -sh "$PCLIBRARY" | $_PAGER
+        ls -Ssh "$PCLIBRARY" | $_PAGER
         ;;
     2)
         clear
-        ls -sh "$DEVICELIBRARY" | $_PAGER
+        ls -Ssh "$DEVICELIBRARY" | $_PAGER
         ;;
     *)
         clear
@@ -512,8 +512,7 @@ do
 
     clear
     Banner
-    echo -e "\n\t\t\t\t\t\t\tBem Vindo(a) ao ebook-cli!!\n\n"
-    echo -e "\t\t\t\t\t\t\tPor favor escolha o que quer fazer\n\n"
+    echo -e "\n\t\t\t\t\t\t\tPor favor escolha o que quer fazer\n\n"
     echo -e "\t\t\t\t\t\t1. Listar conteúdo das Biblotecas de livros"
     echo -e "\t\t\t\t\t\t2. Copiar livros das Bibliotecas"
     echo -e "\t\t\t\t\t\t3. Remover livros das Bibliotecas"
