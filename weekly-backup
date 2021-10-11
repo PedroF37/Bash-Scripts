@@ -101,7 +101,7 @@ BackupDestiny=
 #
 DateBackup=$(date +%d-%m-%Y)
 NextWeek=$(date -d "next week" +%d-%m-%Y)
-LastMonth=$(date -d "last month" +%d-%m-%Y)
+LastMonth=$(date -d "last month" +%m)
 FullSnapshot=FullBackup-${DateBackup}.snar
 DiffSnapshot=DiffBackup-${DateBackup}-to-${NextWeek}.snar
 #
