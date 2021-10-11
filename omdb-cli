@@ -125,6 +125,8 @@ gawk -F\" '
 $2 ~ /Title/{Output[$2] = $4};
 $2 ~ /Year/{Output[$2] = $4};
 $2 ~ /Released/{Output[$2] = $4};
+$2 ~ /Runtime/{Output[$2] = $4};
+$2 ~ /Genre/{Output[$2] = $4};
 $2 ~ /Director/{Output[$2] = $4};
 $2 ~ /Writer/{Output[$2] = $4};
 $2 ~ /Actors/{Output[$2] = $4};
@@ -141,6 +143,8 @@ END {
 {printf "%-8s\t\t%-8s\n", "Title", Output["Title"]};
 {printf "%-8s\t\t%-8s\n", "Year", Output["Year"]};
 {printf "%-8s\t\t%-8s\n", "Released", Output["Released"]};
+{printf "%-8s\t\t%-8s\n", "Runtime", Output["Runtime"]};
+{printf "%-8s\t\t%-8s\n", "Genre", Output["Genre"]};
 {printf "%-8s\t\t%-8s\n", "Director", Output["Director"]};
 {printf "%-8s\t\t%-8s\n", "Writer", Output["Writer"]};
 {printf "%-8s\t\t%-8s\n", "Actors", Output["Actors"]};
