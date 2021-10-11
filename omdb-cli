@@ -85,20 +85,20 @@ Uso: ${0##*/} -T TÍTULO | -i ID [OPÇÕES...]
 
 MANDATÓRIO:
 
--T TÍTULO   Especifica o título do filme ou série.
--i ID       Especifica o ID do imdb. ID é tt seguido de 7 a 8 digitos.
+-T TÍTULO   Especifica o título do filme ou série
+-i ID       Especifica o ID do imdb. ID é tt seguido de 7 a 8 digitos
 
 * Embora estas opções sejam mandatórias, elas são também mutuamente exclusivas.
-  Ou usa -T TÍTULO ou -i ID, mas não as duas juntas.
+  Ou usa -T TÍTULO ou -i ID, mas não as duas juntas
 
 OPÇÕES:
 
--t TIPO     Especifica se é filme ou série. Aceita movie | serie
--p SINÓPSE  Especifica se quer a sinópse breve ou completa. Aceita full | short.
+-t TIPO     Especifica se é filme ou série. Aceita movie | series
+-p SINÓPSE  Especifica se quer a sinópse breve ou completa. Aceita full | short
 -y ANO      Especifica o ano do filme ou série. Aceita 2008 apenas, sem dia ou mês
--h AJUDA    Mostra esta ajuda e sai.
+-h AJUDA    Mostra esta ajuda e sai
 
-* Se filme ou série tiver espaços, tem que colocar entre aspas.
+* Se filme ou série tiver espaços, tem que colocar entre aspas
 
 EOF
 exit
@@ -110,7 +110,6 @@ function Parser {
 clear
 
 # Remove cararacteres estranhos
-# e as 'caixas e chaves dos arrays e dicionários'
 # do json retornado.
 sed '
 s!\(,\)"!\n"!g
