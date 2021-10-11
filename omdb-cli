@@ -1,174 +1,63 @@
 #!/bin/bash
-
-# ---------------------------------------------------------------------------- #
-
-# SCRIPT    omdb-cli (ou o que quiser chamar em vez disso..)
+#
+################################################################################
+#
+# SCRIPT    omdb-cli
 # AUTOR     Pedro Fernandes
 # E-MAIL    pedrobfernandes37@gmail.com
-# DATA      17-06-2021 - Inicio de script
-
-# ---------------------------------------------------------------------------- #
-
+# DATA      17-06-2021
+#
+################################################################################
+#
 # DESCRIÇÃO:
-
-# Script que usa a API do site 'https://www.omdbapi.com',
-# (Open Movie Database), para pegar os dados dos filmes
-# e séries.
-
-# O script mostra na tela algo assim:
-
-# Title           Fringe
-
-# Year            2008–2013
-
-# Runtime         46 min
-
-# Genre           Drama, Mystery, Sci-Fi, Thriller
-
-# Director        N/A
-
-# Writer          J.J. Abrams, Alex Kurtzman, Roberto Orci
-
-# Actors          Anna Torv, Joshua Jackson, Jasika Nicole, John Noble
-
-# Language        English
-
-# Country         USA, Canada
-
-# Awards          Nominated for 3 Primetime Emmys. Another 18 wins & 84 nominations.
-
-# Rating          8.4/10,Metascore:N/A
-
-# Rating          8.4,Source:IMDB
-
-# Type            series
-
-# Total Seasons   5
-
-# Plot
-
-# An F.B.I. agent is forced to work with an institutionalized scientist and his son in order to
-# rationalize a brewing storm of unexplained phenomena.
-
-
-# Alguns filmes e séries mostra classificações de outros sites como o
-# Rotten Tomatoes e Metacritic, mas não são todos, o único que mostra sempre
-# é do imdb.
-
-# ---------------------------------------------------------------------------- #
-
-# COMO USAR:
-
-# A API tem MUITAS opções para se fazer os pedidos, mas o script
-# só usa umas poucas. Nem todas as 'flags' no script correspondem
-# ás 'flags' oficiais na API.
-
-# Elas são:
-
-# -T Título     - Especifica o título do filme ou série
-# -t tipo       - Especifica se procura por filme ou série. Aceita:
-#                 'movie|MOVIE|series|SERIES' apenas, (INGLÊS).
-# -i ID         - Especifica o id (ttxxxxxxx) do filme ou série do imdb
-# -y ano        - Especifica o ano. No formato '2008'. Não aceita '22/05/2008'
-#                 '22-05-2008' '22 05 2008' '22-05-08' etc.
-# -p full|short - Especifica se a sinopse é completa ou breve. Aceita
-#                 'full|FULL|Full ou short|SHORT|Short' apenas.
-
-
-# Exemplos de uso:
-
-# Pegando pelo título, ano e especificando sinopse completa:
-
-# $ omdb-cli -T Fringe -y 2008 -p FULL
-
-# Pelo id do IMDB e sinópse breve:
-
-# $ omdb-cli -i tt0407362 -p short
-
-# Série com espaços:
-
-# $ omdb-cli -T 'Sons of Anarchy'
-
-# Especificando o tipo (série ou filme)
-
-# $ omdb-cli -T '12 Monkeys' -t series -p full
-
-# De todas as opções, as únicas obrigatórias são -T e -i, e estas
-# são mutuamente exclusivas. Ou seja, ou usa -T Título ou usa -i ID.
-
-# Também, como nos dois últimos exemplos, se o filme ou série tiver
-# espaços, tem que colocar entre aspas.
-
-# A ordem não interessa, o script ordena as opções por si, então,
-# pode colocar '-T titulo -p full -y ano', ou '-p full -T titulo -y ano',
-# que vai tudo dar no mesmo..
-
-# Por fim, a sinopse, (opção -p), se não especificar a opção, por padrão
-# usa '-p short'. Ou seja, se digitar: 'omdb-cli -T fringe' vai mostrar como
-# se tivesse digitado: 'omdb-cli -T fringe -p short'.
-
-# ---------------------------------------------------------------------------- #
-
-# NOTAS:
-
-# 1 - O script usa o comando fold, com as opções (-w|--width) e (-s|--space).
-#     No meu monitor a largura (opção -w) de 160 fica perfeito e é a largura
-#     padrão no script. Tem a variável 'FoldWidth=${FoldWidth:=160}' no inicio
-#     do script. Você pode chamar o script: 'FoldWidth=xxx omdb-cli ...' ou,
-#     pode mudar o número aqui no script.
-
-# 2 - Pode acontecer de você pedir dados de uma série ou filme e receber o errado.
-#     Por exemplo, se você digitar: 'omdb-cli -T MacGyver', vai receber qual?
-#     A série antiga ou a nova série que tem o mesmo nome?
-#     Nestes casos tem 3 opções:
-
-#     Chamar pelo id do imdb
-#     $ omdb-cli -i ttxxxxxxx
-
-#     Especificar o ano
-#     $ omdb-cli -T MacGyver -y ano
-
-#     Ou, se uma for série e o outro for filme, como no caso do '12 Monkeys',
-#     especificar a opção -t tipo:
-#     $ omdb-cli -T '12 Monkeys' -t series
-
-# 3 - O script usa o curl para fazer o pedido na API, então tem que instalar
-
-# 4 - Por fim, você precisa pegar a chave da API no site:
-#     'https://www.omdbapi.com'. Tem a opção de chave paga, MAS, tem
-#     também a opção de chave gratuita. Basta dar o nome, e-mail e
-#     dizer para que quer usar a API.
-#     Você coloca a chave na variável: 'Key'
-
-# ---------------------------------------------------------------------------- #
-
-# VERSÃO/CHANGELOG:
-
+#
+# Script para pegar dados dos filmes e séries do site
+# 'https://www.omdbapi.com'.
+# Precisa pegar a chave gratuita da API no site.
+# Coloca a chave na variável 'Key' na secção PARÂMETROS.
+# Variável 'FoldWidth' contém o valor para a opção -w|--width
+# do comando fold. Para trocar, pode alterar o valor no script
+# ou simplesmente chamar o script: $FoldWidth=valor ./omdb-cli
+#
+################################################################################
+#
+# DEPÊNDENCIAS/COMANDOS USADOS:
+#
+# * gawk
+# * sed
+# * fold
+# * curl
+#
+################################################################################
+#
+# VERSÂO/CHANGELOG:
+#
 # 1.0 - 27-06-2021
-
-### Script completado e testado o melhor possível.
-### Caracteres estranhos como '\"..\" e &amp;'
-### que aparecem na sinópse para escapar '"' etc,
-### detectados e substituídos. Mais caracteres
-### que venham a ser achados serão removidos em
-### futuras versões se/caso aparecam.
-
-# ---------------------------------------------------------------------------- #
-
+#
+### Script completado e testado. Removidos caracteres
+### estranhos do output do json.
+#
+# 2.0 - 10-10-2021
+#
+### Script recriado quase do zero, para não usar
+### tanto sed e pipes, e para ficar mais 'limpo'
+### Adicionados mais testes para capturar erros.
+#
+################################################################################
+#
 ##### PARÂMETROS #####
-
+#
 ## Sua chave da API aqui
 Key=''
 
 ## Aqui você coloca a largura para o comando fold
 ## para a opção -w. Basta trocar o número.
-FoldWidth=${FoldWidth:=160}
+FoldWidth=${FoldWidth:=100}
 
 ## A partir daqui não precisa mexer mais.
-ApiKey='&apikey='
 UserAgent=$(type -p curl)
-Proto=${Proto:-https}
-QueryDatabase='://www.omdbapi.com/?'
+ApiKey='&apikey='
+QueryDatabase='https://www.omdbapi.com/?'
 TitleQuery='t='
 IdQuery='i='
 StoryLine='&plot='
@@ -176,9 +65,9 @@ ReleasedYear='&y='
 Category='&type='
 Plot=${Plot:-short}
 CommandLine=${ApiKey}${Key}
-
-# ---------------------------------------------------------------------------- #
-
+#
+################################################################################
+#
 ##### FUNÇÕES #####
 
 function ErrorExit {
@@ -194,127 +83,87 @@ clear
 cat <<EOF
 Uso: ${0##*/} -T TÍTULO | -i ID [OPÇÕES...]
 
-ONDE OPÇÕES SÃO:
+MANDATÓRIO:
 
--T TÍTULO      Procura pelo Título do filme ou série.
--t tipo        Especifica se procura por filme ou série. Aceita: -t movie | -t series
--i ID          Procura pelo ID do imdb (ttxxxxxxx). ID é tt seguido de entre 7 a 8 digitos.
--y ano         Permite especificar o ano do filme ou série.
--p short|full  Especifica se mostra sinopse completa ou breve. Por padrão, se opção -p não for usada, a sinopse é breve.
+-T TÍTULO   Especifica o título do filme ou série.
+-i ID       Especifica o ID do imdb. ID é tt seguido de 7 a 8 digitos.
 
+* Embora estas opções sejam mandatórias, elas são também mutuamente exclusivas.
+  Ou usa -T TÍTULO ou -i ID, mas não as duas juntas.
 
-Exemplos de Uso:
+OPÇÕES:
 
+-t TIPO     Especifica se é filme ou série. Aceita movie | serie
+-p SINÓPSE  Especifica se quer a sinópse breve ou completa. Aceita full | short.
+-y ANO      Especifica o ano do filme ou série. Aceita 2008 apenas, sem dia ou mês
+-h AJUDA    Mostra esta ajuda e sai.
 
-Consultando pelo título apenas:
-
-$ ${0##*/} -T Fringe
-
-Usando o ID do imdb e a opção -p para especificar sinopse breve:
-
-$ ${0##*/} -i tt0407362 -p short
-
-Especificando título da série, ano e sinopse completa:
-
-$ ${0##*/} -T 'Sons of Anarchy' -y 2008 -p full
-
-Especificando o tipo:
-
-$ ${0##*/} -T '12 Monkeys' -t series
-
-
-NOTAS:
-
-1 - De todas as opções, as únicas obrigatórias são as opções -T ou -i e elas são mutuamente exclusivas.
-    Ou seja, ou usa a opção -T ou usa a opção -i, mas não as duas juntas.
-
-2 - Se filme ou série tiver espaços, como nos últimos exemplos, tem que colocar entre aspas.
-
-3 - Ano do filme ou série são os 4 dígitos (2008), não aceita (01-03-2008)|(01/03/2008)|(01 03 2008) nem (01 03 08).
-
-4 - Se existir dois filmes ou séries com o mesmo nome, possivelmente receberá o filme ou série errado.
-    Para resolver esse caso você pode usar um destes três métodos:
-
-    1 - Chamar o script usando o ID:
-        $ ${0##*/} -i ttxxxxxxxx
-
-    2 - Chamar o script passando o ano do filme ou série:
-        $ ${0##*/} -T fringe -y 2008
-
-    3 - Se for o caso de o nome corresponder a uma série e a
-        um filme, então pode especificar a opção -t tipo:
-        $ ${0##*/} -T '12 Monkeys' -t series
+* Se filme ou série tiver espaços, tem que colocar entre aspas.
 
 EOF
-
 exit
 
 }
 
 function Parser {
 
-# Limpamos o retorno do pedido.
-# Com Kilos atrás de Kilos de sed pipes e gawks...
-# Claro que tem os módulos dos tais de pythons
-# e esse tal de 'jq', mas não sei usar nenhum dos
-# dois, isso é coisa pra programador..
-#
 clear
 
+# Remove cararacteres estranhos
+# e as 'caixas e chaves dos arrays e dicionários'
+# do json retornado.
 sed '
-s!\("\)\(,\)\("\)!\1\n\3!g
-s/[]{}[]//g
-/"Writer"/s/([^)]*)//g
-s!\(\\"\)\([^\\"]*\)\(\\"\)!\2!g' |
-
-gawk -v fs='"' '
-
-BEGIN {
-
-    FS=fs
-    OFS="<=>"
-}
-
-/"Title":/{print $2,$4};
-/"Year":/{print $2,$4};
-/"Released":/{print $2,$4};
-/"Runtime":/{print $2,$4};
-/"Genre":/{print $2,$4};
-/"Director":/{print $2,$4};
-/"Writer":/{print $2,$4};
-/"Actors":/{print $2,$4};
-/"Language":/{print $2,$4};
-/"Country":/{print $2,$4};
-/"Awards":/{print $2,$4};
-/"Value":/{print "Rating",$0};
-/"imdbRating":/{print "Rating",$4",Source:IMDB"};
-/"Type":/{print $2,$4};
-/"totalSeasons":/{print "Total Seasons",$4};
-/"Plot"/{print $2,$4}
-
-' |
-
-sed -n '{
-/Plot/{h ; n}
-$G ; p}' |
-
-sed '
-s/"Value"://g
-s!\(Plot\)\(<=>\)!\n\n\1\n\n!
-s/"//g
-s/&quot;/"/g
+s!\(,\)"!\n"!g
+s/[][{}]//g
+s!\(\\"\)\([^\\"]*\)\(\\"\)!\2!g
+s/&quot;//g
 s!\(&\)\(amp;\)!\1!g' |
 
-sed '/^\n*$/{N; D}' |
+# Colocamos o que queremos no array
+# e imprimimos bonitinho o final 'END'
+gawk -F\" '
+$2 ~ /Title/{Output[$2] = $4};
+$2 ~ /Year/{Output[$2] = $4};
+$2 ~ /Released/{Output[$2] = $4};
+$2 ~ /Director/{Output[$2] = $4};
+$2 ~ /Writer/{Output[$2] = $4};
+$2 ~ /Actors/{Output[$2] = $4};
+$2 ~ /Language/{Output[$2] = $4};
+$2 ~ /Country/{Output[$2] = $4};
+$2 ~ /Awards/{Output[$2] = $4};
+$2 ~ /imdbRating/{Output["Rating"] = $4};
+$2 ~ /Type/{Output[$2] = $4};
+$2 ~ /totalSeasons/{Output[$2] = $4};
+$2 ~ /Plot/{Output[$2] = $4};
 
-gawk -F"<=>" '{printf "\n%-8s\t\t%-8s\n", $1,$2}' |
-fold -w $FoldWidth -s
-echo
+END {
+
+{printf "%-8s\t\t%-8s\n", "Title", Output["Title"]};
+{printf "%-8s\t\t%-8s\n", "Year", Output["Year"]};
+{printf "%-8s\t\t%-8s\n", "Released", Output["Released"]};
+{printf "%-8s\t\t%-8s\n", "Director", Output["Director"]};
+{printf "%-8s\t\t%-8s\n", "Writer", Output["Writer"]};
+{printf "%-8s\t\t%-8s\n", "Actors", Output["Actors"]};
+{printf "%-8s\t\t%-8s\n", "Language", Output["Language"]};
+{printf "%-8s\t\t%-8s\n", "Country", Output["Country"]};
+{printf "%-8s\t\t%-8s\n", "Awards", Output["Awards"]};
+{printf "%-8s\t\t%-8s\n", "Rating", Output["Rating"] " - Source: IMDB"};
+{printf "%-8s\t\t%-8s\n", "Type", Output["Type"]};
+
+if ("totalSeasons" in Output)
+    {printf "%-8s\t\t%-8s\n", "Total Seasons", Output["totalSeasons"]};
+
+{printf "\n\n%-8s\n\n%-8s\n\n", "Plot", Output["Plot"]};
 
 }
+' | fold -w $FoldWidth -s
 
-# ---------------------------------------------------------------------------- #
+exit 0
 
+}
+#
+################################################################################
+#
 ##### VERIFICAÇÕES #####
 
 # Tem que ter pelo menos -T ou -i
@@ -337,36 +186,25 @@ ErrorExit Não tem chave de API.
 ErrorExit Necessita do programa curl.
 
 }
-
-# ---------------------------------------------------------------------------- #
-
+#
+################################################################################
+#
 ##### PEGANDO PARÂMETROS E ARGUMENTOS #####
 
 while getopts :t:i:y:T:p:h Opt
 do
-    # Dependendo da opção, vai montando o comando.
-    # O Título e o ID, são mutuamente exclusivos.
-    # Para além disso, ambos têm que vir primeiro na
-    # URL: 'https://www.omdbapi.com/?[Ti]='; então eles
-    # são inseridos no comando no final do script apenas.
-    # Também, a chave da API é o último argumento da URL,
-    # então o comando é composto da direta para a esquerda:
-    # 'CommandLine=${ChaveAPI}; CommandLine=${Var1}${ChaveAPI}..'
 
     case "$Opt" in
     T)
         Title=$OPTARG
 
-        # Não pode ter espaços na URL, então, John Wick Chapter 2
-        # não passa, mas passa John+Wick+Chapter+2. Atenção,
-        # que aqui está contando com que o nome da serie ou filme
-        # seja inserido entre aspas. Se não não vai servir de nada!!
+        # Na url os espaços vão codificados com '+'
         Title=${Title// /+}
         ;;
     i)
         ID=$OPTARG
 
-        # ID tem que ser ttxxxxxxx|ttxxxxxxxx (7 ou 8 digitos)
+        # ID do imdb é tt + 7 ou 8  digitos
         [[ "$ID" =~ ^tt[0-9]{7,8}$ ]] && : || {
 
         ErrorExit ID especificado errado. Use ${0##*/} -h para ajuda.
@@ -376,14 +214,11 @@ do
     t)
         Type=$OPTARG
 
-        # Type, tem que ser 'movie|MOVIE|series|SERIES' em Inglês...
-
         case $Type in
 
         series|SERIES|movie|MOVIE)
             :
             ;;
-       # Vocês aqui no Brasil falam Seriado né?...
         séries|SÉRIES|série|SÉRIE|seriados|SERIADOS|seriado|SERIADO)
             Type='series'
             ;;
@@ -395,24 +230,18 @@ do
             ;;
         esac
 
-        CommandLine=${Category}${Type}${CommandLine}
+        CommandLine=$Category$Type$CommandLine
         ;;
     y)
         Year=$OPTARG
 
-        # Ano, tem que ser os 4 dígitos apenas do ano (2008),
-        # não pode ser '22-01-2008' ou '22/01/2008'. Atenção,
-        # que a expressão pega os casos de '22-01-2008' ou
-        # '22/01/2008', mas não pega casos de '22-02-08' ou
-        # '22 01 2008'.
+        # Aqui não pega se ano for por exemplo: 2008-12-12, só 12-12-2008
         Year=${Year//[[:digit:]][[:digit:]][\-\/:]}
 
-        CommandLine=${ReleasedYear}${Year}${CommandLine}
+        CommandLine=$ReleasedYear$Year$CommandLine
         ;;
     p)
         Plot=$OPTARG
-
-        # Plot (sinopse) suporta 'full|FULL|Full ou |short|SHORT|Short' apenas.
 
         [[ "$Plot" =~ ^(full|FULL|Full|short|SHORT|Short)$ ]] && : || {
 
@@ -434,31 +263,33 @@ done
 # Não pode pegar pelo título e id ao mesmo tempo.
 [ -n "$Title" ] && [ -n "$ID" ] && {
 
-ErrorExit Não pode usar -T título e -i ID no mesmo comando.
+ErrorExit Não pode usar -T TÍTULO e -i ID no mesmo comando.
 
 }
 
-# ---------------------------------------------------------------------------- #
+# Mas tem que ter pelo menos um dos dois
+[ -z "$Title" ] && [ -z "$ID" ] && {
 
+ErrorExit Tem que especificar pelo menos um de -T TÍTULO ou -i ID.
+
+}
+#
+################################################################################
+#
 ##### EXECUTAMOS O PEDIDO #####
-
 
 if [ -n "$Title" ]
 then
-    $UserAgent -s \
-    ${Proto}${QueryDatabase}${TitleQuery}${Title}${CommandLine} \
-    | Parser
+    $UserAgent -s $QueryDatabase$TitleQuery$Title$CommandLine | Parser
 
 elif [ -n "$ID" ]
 then
-    $UserAgent -s \
-    ${Proto}${QueryDatabase}${IdQuery}${ID}${CommandLine} \
-    | Parser
+    $UserAgent -s $QueryDatabase$IdQuery$ID$CommandLine | Parser
 
 else
     ErrorExit Erro desconhecido.
 fi
 
 exit 0
-
-# ---------------------------------------------------------------------------- #
+#
+################################################################################
