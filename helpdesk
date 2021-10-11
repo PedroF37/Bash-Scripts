@@ -26,7 +26,7 @@
 #
 ################################################################################
 #
-# CONFIGURAÇÃO DE USRÁRIO:
+# CONFIGURAÇÃO DE USUÁRIO:
 #
 # 1. O script cria um dirétório, onde armazena a base de dados.
 #    Para isso você, usuário(a), tem que especificar qual diretório
@@ -423,13 +423,13 @@ do
 
     clear
     Banner
-    echo -e "\n\t\t\t\t\t\t\tPor favor escolha:\n\n"
-    echo -e "\t\t\t\t\t\t\t1. Inserir dados"
-    echo -e "\t\t\t\t\t\t\t2. Fazer consulta"
-    echo -e "\t\t\t\t\t\t\t3. Inserir solução"
-    echo -e "\t\t\t\t\t\t\t0. Sair do script"
+    echo -e "\n\t\t\t\t\t\t\t    Por favor escolha:\n\n"
+    echo -e "\t\t\t\t\t\t\t    1. Inserir dados"
+    echo -e "\t\t\t\t\t\t\t    2. Fazer consulta"
+    echo -e "\t\t\t\t\t\t\t    3. Inserir solução"
+    echo -e "\t\t\t\t\t\t\t    0. Sair do script"
 
-    echo -en "\n\n\t\t\t\t\t\tDigite sua opção: "
+    echo -en "\n\n\t\t\t\t\t\t    Digite sua opção: "
     read -n 1 Choice
 
     case $Choice in
