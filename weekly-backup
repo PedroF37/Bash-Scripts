@@ -125,7 +125,7 @@ exit 0
 
 }
 #
-function Archive {
+function EntryDirectory {
 
 cd $BackupDestiny || {
 
@@ -133,6 +133,13 @@ ErrorExit Não conseguimos entrar em $BackupDestiny
 
 }
 
+return
+
+}
+#
+function Archive {
+
+EntryDirectory
 mkdir Backup-$LastMonth
 mv *.snar *.t[gbx]z Backup-$LastMonth
 return
@@ -141,12 +148,7 @@ return
 #
 function FullBackup {
 
-cd $BackupDestiny || {
-
-ErrorExit Não conseguimos entrar em $BackupDestiny
-
-}
-
+EntryDirectory
 echo
 echo Iniciando Backup Completo....
 tar -g $FullSnapshot $Comp $OutFullArchive $BackupList 2> /dev/null
@@ -156,12 +158,7 @@ Completed
 #
 function DiffBackup {
 
-cd $BackupDestiny || {
-
-ErrorExit Não conseguimos entrar em $BackupDestiny
-
-}
-
+EntryDirectory
 cp FullBackup*.snar "$DiffSnapshot"
 echo
 echo Iniciando Backup Diferencial...
@@ -172,12 +169,7 @@ Completed
 #
 function HowMany {
 
-cd $BackupDestiny || {
-
-ErrorExit Não conseguimos entrar em $BackupDestiny
-
-}
-
+EntryDirectory
 HowManyDiff=$(ls -1t DiffBackup*.snar | wc -l)
 
 if [ "$HowManyDiff" -ge 3 ]
