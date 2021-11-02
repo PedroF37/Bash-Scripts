@@ -471,7 +471,7 @@ do
         QueryData
         ;;
     3)
-        UpdateData
+        InsertSolution
         ;;
     0)
         echo -e "\nTerminando script..."
