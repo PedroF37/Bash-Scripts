@@ -70,6 +70,9 @@
 ###         digita um número e a função traduz esse número para o
 ###         nome da coluna correspondente.
 #
+### 1.2     Antes de submeter os dados na base de dados deixa o usuário
+###         revêr e confirmar se quer ou não submeter.
+#
 ################################################################################
 #
 ##### PARÂMETROS #####
@@ -145,7 +148,6 @@ echo -e "\t\t\t\t\t\t*********************************************"
 return
 
 }
-
 #
 function CreateTable {
 
@@ -348,7 +350,35 @@ case $Choice in
 
 esac
 
-InsertData "$Device" "$Os" "$Description" "$Solution"
+clear
+echo -e "Por favor reveja os itens antes de os submeter para a base de dados:\n"
+echo -e "\nHARDWARE: $Device\n"
+echo -e "\nSOFTWARE: $Os\n"
+echo -e "\nDESCRIÇÃO:\n"
+echo -e "\n$Description\n"
+
+if [ "$Solution" != '' ]
+then
+    echo -e "\nSOLUÇÃO:\n"
+    echo -e "\n$Solution\n"
+fi
+
+echo -en "\nDigite [1] para confirmar e submeter ou [0] para cancelar e saír do script: "
+read Number
+
+case $Number in
+1)
+    echo Submetendo itens em base de dados...
+    InsertData "$Device" "$Os" "$Description" "$Solution"
+    ;;
+0)
+    echo Cancelando e saindo do script...
+    exit 0
+    ;;
+*)
+    ErrorExit Input inválido. Terminando...
+    ;;
+esac
 
 return
 
@@ -441,7 +471,7 @@ do
         QueryData
         ;;
     3)
-        InsertSolution
+        UpdateData
         ;;
     0)
         echo -e "\nTerminando script..."
