@@ -86,7 +86,7 @@ clear
 echo -e "\t\t\t\t\t\t**************************************************"
 echo -e "\t\t\t\t\t\t*                                                *"
 echo -e "\t\t\t\t\t\t*                                                *"
-echo -e "\t\t\t\t\t\t*                 ebook-cli                      *"
+echo -e "\t\t\t\t\t\t*                   ebook-cli                    *"
 echo -e "\t\t\t\t\t\t*                                                *"
 echo -e "\t\t\t\t\t\t*                                                *"
 echo -e "\t\t\t\t\t\t*            Gerenciador de Livros CLI           *"
