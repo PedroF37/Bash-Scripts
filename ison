@@ -88,6 +88,8 @@ Failure=0
 #
 ##### TESTES #####
 #
+clear
+
 [ -z "$Gateway" ] && {
 
 echo -e "\n\n*** Sem Conexão ***\n\n"
