@@ -99,7 +99,7 @@ exit 0
 
 for Target in $Targets
 do
-    echo -e "Teste de Conectividade em: $Target"
+    echo Teste de Conectividade em: $Target
     #
     if ping -w $TimeOut $Target &> /dev/null
     then
