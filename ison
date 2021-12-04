@@ -76,11 +76,8 @@
 ##### PARÂMETROS #####
 #
 TimeOut=${TimeOut:- 5}
-Gateway=$(gawk '/^default/{print $3}' <<< $(ip r) || \
-gawk '$4 == "UG" {print $2}' <<< $(route -n))
 DnsAddr=${DnsAddr:-8.8.8.8}
 DomainTest=${DomainTest:-'www.google.com'}
-Targets="127.0.0.1 ${Gateway} ${DnsAddr} ${DomainTest}"
 Success=0
 Failure=0
 #
@@ -90,12 +87,20 @@ Failure=0
 #
 clear
 
-[ -z "$Gateway" ] && {
+if type -p ip &> /dev/null
+then
+    Gateway=$(gawk '/^default/{print $3}' <<< $(ip r))
+#
+elif type -p route &> /dev/null
+then
+    Gateway=$(gawk '$4 == "UG" {print $2}' <<< $(route -n))
+else
+    echo -e "\n\n *** Sem Conexão *** \n\n"
+    exit 0
+fi
 
-echo -e "\n\n*** Sem Conexão ***\n\n"
-exit 0
-
-}
+Targets="127.0.0.1 ${Gateway} ${DnsAddr} ${DomainTest}"
+echo
 
 for Target in $Targets
 do
